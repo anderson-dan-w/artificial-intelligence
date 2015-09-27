@@ -1,8 +1,8 @@
 #pr10
-from __future__ import print_function
-from __future__ import division
+from __future__ import print_function, division
 import math
 import collections
+import random
 
 def read_in_definitions(fname):
     with open(fname) as fh:
@@ -20,7 +20,7 @@ def read_in_definitions(fname):
         attr_names.append(name)
     return attributes, attr_names
 
-fname = "pr9_mushroom_attributes.txt"
+fname = "pr9_mushroom_attributes.csv"
 attrs, attr_names = read_in_definitions(fname)
 for idx, attr in enumerate(attr_names): print(idx, attr, attrs[attr].items(), end="\n\n")
     
@@ -30,7 +30,7 @@ def read_in_data(fname):
     data = [l.split(",") for l in lines]
     return data
 
-fname = "pr9_mushroom_data.txt"
+fname = "pr9_mushroom_data.csv"
 data_set = read_in_data(fname)
 print(data_set[0])
 
@@ -51,11 +51,10 @@ def make_probabilities(training):
         if attr == "safe-to-eat?":
             continue
         probabilities[attr] = {}
-        for label in attrs[attr].keys():
+        for label in attrs[attr]:
             counts = collections.Counter(d[0] for d in training if d[idx] == label)
             for key in ("p", "e"):
-                if key not in counts:
-                    counts[key] = 1       ## +1 smoothing
+                counts.setdefault(key, 1) ## +1 smoothing
             nlabel = sum(counts.values())
             probabilities[attr][label] = (nlabel, counts["p"], counts["e"])
     return probabilities
@@ -83,7 +82,7 @@ def do_test(testing, probs=probs):
     ndeaths = 0
     for vector in testing:
         results = calc_probabilities(vector, probs)
-        outcome = max(results.keys(), key=lambda x:results[x])
+        outcome = max(results, key=results.get)
         if outcome == vector[0]:
             ncorrect += 1
         if outcome == "e" and vector[0] == "p":
@@ -93,6 +92,4 @@ def do_test(testing, probs=probs):
 ncorrect, ndeaths = do_test(testing)
 print("Got {} correct, out of {}, and there were {} fatal misclassifications"
         .format(ncorrect, len(testing), ndeaths))
-
-
 

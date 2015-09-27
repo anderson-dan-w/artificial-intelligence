@@ -1,6 +1,5 @@
 ##pr9
-from __future__ import print_function
-from __future__ import division
+from __future__ import print_function, division
 import math
 import collections
 
@@ -22,7 +21,8 @@ def read_in_definitions(fname):
 
 fname = "pr9_mushroom_attributes.txt"
 attrs, attr_names = read_in_definitions(fname)
-for idx, attr in enumerate(attr_names): print(idx, attr, attrs[attr].items(), end="\n\n")
+for idx, attr in enumerate(attr_names):
+    print(idx, attr, attrs[attr].items(), end="\n\n")
 
 def read_in_data(fname):
     with open(fname) as fh:
