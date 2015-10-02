@@ -1,6 +1,8 @@
-#!/usr/bin/python3
-""" a_star.py
-    using best-first search algorithm with heuristics to improve upon greedy
+"""
+a_star.py
+
+Using best-first search algorithm with heuristics to improve upon greedy.
+Also includes (very) basic node/graph structure
 """
 from __future__ import print_function, division
 import collections
