@@ -1,200 +1,199 @@
-##pr9
+"""
+decision_tree.py
+
+Using decision trees to analyze data and come to (probabilistic?) answer to:
+"given this setup, if presented with new item, containing attributes X, Y, Z,
+is outcome variable W likely to be True or False"
+
+"""
 from __future__ import print_function, division
-import math
 import collections
+import math
 
-def read_in_definitions(fname):
-    with open(fname) as fh:
-        lines = fh.read().split("\n")
-    attributes = {"safe-to-eat?" : {"e" : "edible", "p" : "poisonous"}}
-    attr_names = ["safe-to-eat?"]
-    for line in lines:
-        numIdx, nameIdx = line.index("."), line.index(":")
-        name = line[numIdx+2:nameIdx]
-        values = line[nameIdx+2:].replace(" ","").split(",")
-        values = {v[v.index("=")+1:] : v[:v.index("=")] for v in values}
-        if "?" not in values:
-            values["?"] = "missing"
-        attributes[name] = values
-        attr_names.append(name)
-    return attributes, attr_names
-
-fname = "pr9_mushroom_attributes.txt"
-attrs, attr_names = read_in_definitions(fname)
-for idx, attr in enumerate(attr_names):
-    print(idx, attr, attrs[attr].items(), end="\n\n")
-
-def read_in_data(fname):
-    with open(fname) as fh:
-        lines = fh.read().split("\n")
-    data = [l.split(",") for l in lines]
-    return data
-
-fname = "pr9_mushroom_data.txt"
-data_set = read_in_data(fname)
-print(data_set[0])
-
-def create_descriptive(data):
-    s = ""
-    for idx, attr in enumerate(attr_names):
-        s += attr + ": " + attrs[attr][data[idx]] + "\n"
-    return s
-
-print(create_descriptive(data_set[0]))
-
-def find_min_entropy(data, used_attrs=[], debug=False):
-    if "safe-to-eat?" not in used_attrs:
-        used_attrs.append("safe-to-eat?")
-    best_gain, best_attr = 1.1, None
-    total = len(data)
-    for idx, attr in enumerate(attr_names):
-        if attr in used_attrs:
-            continue
-        weighted_entropy = 0
-        for label in attrs[attr].keys():
-            counts = collections.Counter(d[0] for d in data if d[idx] == label)
-            subtotal = sum(counts.values())
-            entropy = sum(-1*(v/subtotal) * math.log(v/subtotal, 2) for v in counts.values())
-            weighted_entropy += (subtotal/total) * entropy
-        if debug:
-            print("{n}: {e}".format(n=attr, e=weighted_entropy))
-        if weighted_entropy < best_gain:
-            if debug:
-                print("\tnew best attr:", attr)
-            best_gain = weighted_entropy
-            best_attr = attr
-    return best_gain, best_attr
-
-find_min_entropy(data_set, debug=True)
-
-class Node(object):
-    def __init__(self, dataset, used_attrs=[], parent_branch=None):
-        self.data = dataset
-        self.parent_branch = parent_branch
-        self.used_attrs = used_attrs[:]     # make it a copy, always a copy!
-        if "safe-to-eat?" not in self.used_attrs:
-            self.used_attrs.append("safe-to-eat?")
-        self.entropy, self.attr = find_min_entropy(self.data, self.used_attrs)
-        self.attr_idx = attr_names.index(self.attr)
-        self.used_attrs.append(attr)
-        self.branches = {}
-        for label in attrs[self.attr].keys():
-            subdata = [d for d in self.data if d[self.attr_idx] == label]
-            self.branches[label] = Branch(label, subdata, self.used_attrs, self)
-
-class Branch(object):
-    def __init__(self, label, label_data, used_attrs, parent_node):
-        #print("making a branch for label {l}... from {p}".format(l=label, p=parent_node.attr))
-        self.label = label
-        self.used_attrs = used_attrs   # not modifying, so no need to copy
-        self.parent_node = parent_node # had to come from somewhere...
-        self.child_node = None
-        self.data = label_data
-        self.ndata = len(self.data)
-        if self.ndata == 0:
-            self.decision, self.certainty = "unknown", 0.0
-            return
-        self.safeness = sum(1 for d in self.data if d[0] == "e")/self.ndata
-        if self.safeness >= 0.5:
-            self.decision, self.certainty = "edible", self.safeness
-        else:
-            self.decision, self.certainty = "poisonous", 1 - self.safeness
-        # we've got hetergeneous data, AND more attrs to investigate...
-        if self.certainty != 1.0 and len(used_attrs) != len(attr_names):
-            self.child_node = Node(self.data, self.used_attrs, self)
 
 class DecisionTree(object):
-    def __init__(self, data):
+    """ Instantiate a Decision Tree that attempts to make optimal choices
+        considering each attribute, weighing the outcome of any particular
+        attribute being set to each label, and describing how that affects
+        the certainty of the outcome.
+    """
+    def __init__(self, data, dependent_idx, dependent_success, attr_mapper):
         self.data = data
-        self.root_node = Node(data)
-        self.safeness = sum(1 for d in self.data if d[0] == "e")/len(data)
-        if self.safeness >= 0.5:
-            self.decision, self.certainty = "edible", self.safeness
+        self.dependent_idx = dependent_idx
+        self.dependent_success = dependent_success
+        self.attr_mapper = attr_mapper
+        self.not_success = self._not_success()
+        self.nattrs = len(self.data[0])  ## length of first row
+        self.used_idxs = set([self.dependent_idx])
+        self.decision, self.certainty = self.get_certainty(self.data)
+        self.root = Node(self.data, self)
+
+    def _not_success(self):
+        """ Convenience method to establish some non-success decision output.
+            While this does not require the data to have a binary dependent
+            variable, it treats decisions as such - either it was or it was
+            not the successful outcome.
+        """
+        not_success = -1
+        if self.dependent_success == -1:
+            not_success = 0
+        outcome_labels = self.attr_mapper[self.dependent_idx]["labels"]
+        if len(outcome_labels) == 2:
+            not_success = [l for l in outcome_labels
+                             if l != self.dependent_success][0]
+        return not_success
+
+    def get_groupby(self, data_slice, attr_idx):
+        """ return generators containing subsets of data, split by labels of
+            the given attr_idx
+        """
+        ## @TODO: multiple passes through data...
+        for label in self.attr_mapper[attr_idx]["labels"]:
+            yield (label, (row for row in data_slice if row[attr_idx] == label))
+
+    def get_positives(self, data_slice):
+        """ Create list of all rows of data slice that are considered to have
+            the positive outcome for the dependent variable
+        """
+        return [row for row in data_slice
+                if row[self.dependent_idx] == self.dependent_success]
+
+    def calculate_entropy(self, data_slice, attr_idx):
+        """ Determine the entropy of a given attribute in relation to how it
+            predicts the dependent variable, using the standard "shannon"
+            measure of entropy.
+        """
+        nitems = len(data_slice)
+        weighted_entropy = 0
+        ## grab each possible outcome for the given attr
+        for _, subiter in self.get_groupby(data_slice, attr_idx):
+            ## find out how it corresponds to variable of interest
+            counts = collections.Counter(row[self.dependent_idx]
+                                         for row in subiter)
+            subtotal = sum(counts.values())
+            ## entropy definition: (negative)(sum all i)p(i)*log(p(i))
+            entropy = 0
+            for value in counts.values():
+                local_weight = value / subtotal
+                entropy += local_weight * math.log(local_weight, 2)
+            weighted_entropy += (subtotal / nitems) * -entropy
+        return weighted_entropy
+
+    def find_min_entropy(self, data_slice, used_idxs):
+        """ Find the attribute that introduces the least amount of entropy in
+            regards to the dependent variable. That is, the more homogeneous the
+            dependent output for each label of an attribute, the lower the
+            entropy which makes it more helpful to use for decision making.
+        """
+        ## since used_idxs changes on per-node basis, recalculate unused_idxs
+        unused_idxs = set(range(self.nattrs)).difference(used_idxs)
+        entropies = {attr_idx: self.calculate_entropy(data_slice, attr_idx)
+                     for attr_idx in unused_idxs}
+        ## return the one with least entropy
+        return min(entropies.items(), key=lambda x: x[1])
+
+    def get_certainty(self, data_slice):
+        """ Calculate the "average" outcome for this data set, either success
+            or failure, and report the certainty of that decision
+        """
+        nitems = len(data_slice)
+        npositives = len(self.get_positives(data_slice))
+        success = npositives / nitems
+        if success >= 0.5:  ## half the time or more, this is "good"
+            decision = self.dependent_success
+            certainty = success
         else:
-            self.decision, self.certainty = "poisonous", 1 - self.safeness
-        
-    def create_tree(self, node=None, indent=0):
-        if node is None:
-            node = self.root_node
-        tree = ""
-        if indent == 0:
-            header = ""
-        elif indent == 1:
-            header = "|---> "
-        else:
-            header = "|     " * (indent-1) + "|---> "
-        label_dict = node.branches
-        width = max(len(v) for v in attrs[node.attr].values()) + 1
-        for label, branch in sorted(label_dict.items(), key= lambda x:attrs[node.attr][x[0]]):
-            tree += ("{h}{n}: {l:<{w}} ({b.decision}, {b.certainty}, {b.ndata})\n"
-                    .format(h=header, n=node.attr.capitalize(), l=attrs[node.attr][label], 
-                            w=width, b=branch))
-            if branch.child_node is not None:
-                tree += self.create_tree(branch.child_node, indent+1)
-        return tree
-    
-    def get_decision(self, mushroom_info):
-        if len(mushroom_info) == 22: # attrs, without "poisonous/edible"
-            mushroom_info.insert(0, "unknown") # to keep indexing accurate.
-        curr_node = self.root_node
-        prev_decision, prev_certainty, prev_ndata = self.decision, self.certainty, len(self.data)
+            decision = self.not_success
+            certainty = 1 - success
+        return decision, certainty
+
+    def get_decision(self, row):
+        """ Provided a row of data, with or without the dependent variable
+            included, predict the outcome according to the already-instantiated
+            @a DecisionTree and report the decision, the certainty of it,
+            the number of items used to determine it, and the path taken to
+            get there.
+        """
+        if len(row) != self.nattrs:
+            row = row[:]
+            row.insert(self.dependent_idx, "unknown")  ## placeholder?
+        node, nitems = self.root, len(self.data)
+        decision, certainty = self.decision, self.certainty
         path = []
         while True:
-            curr_label = mushroom_info[curr_node.attr_idx]
-            curr_branch = curr_node.branches[curr_label]
-            # check for ndata == 0...
-            if curr_branch.ndata == 0:
-                return (prev_decision, prev_certainty, path, prev_ndata)
-            path.append((curr_node.attr, curr_label))
-            if curr_branch.child_node is None:
-                return (curr_branch.decision, curr_branch.certainty, path, curr_branch.ndata)
-            # No leaf-nodes/dead ends, so keep traversing the tree...
-            prev_decision, prev_certainty = curr_branch.decision, curr_branch.certainty
-            prev_ndata = curr_branch.ndata
-            curr_node = curr_branch.child_node
-        return # won't get here, but just to close scope more explicitly... perhaps re-work?
-    
+            label = row[node.attr]
+            branch = node.branches[label]
+            if branch.nitems == 0:
+                break
+            decision, certainty = branch.decision, branch.certainty
+            nitems = branch.nitems
+            path.append((node.attr, label))
+            if branch.child is None:
+                break
+            node = branch.child
+        return decision, certainty, nitems, path
+
     def describe_path(self, path):
-        if path == []:
-            return "Since, nothing pertinent is known,"
-        return "If " + " AND\n\t".join("{a} is {l}".format(a=attr, l=attrs[attr][label]) 
-                                        for attr, label in path)
-    
-    def describe_outcome(self, outcome):
-        decision, certainty, path, ndata = outcome
-        s = self.describe_path(path)
-        s += ("\nTHEN, with {c:.05} certainty, it is {d}, according to {n} examples"
-              .format(c=certainty, d=decision, n=ndata))
-        return s
-
-shuffled_data = data_set[:] # first copy it...
-random.shuffle(shuffled_data)
-ndata = len(shuffled_data)
-ntraining = int(ndata*2/3)
-training = shuffled_data[:ntraining]
-testing = shuffled_data[ntraining:]
-
-dt = DecisionTree(training)
-print(dt.create_tree())
-
-def test_mushrooms(test_set, verbose=False):
-    ncorrect = 0
-    ndeaths = 0
-    n = len(test_set)
-    for test in test_set:
-        outcome = dt.get_decision(test)
-        if verbose:
-            print(dt.describe_outcome(outcome))
-        if test[0] == outcome[0][0]:
-            ncorrect += 1
-        if test[0] == "p" and outcome[0][0] == "e":
-            ndeaths += 1
-    print("Out of {n}, {nc} were correct, for average of {a}\n"
-          "Furthermore, there were {nd} cases where poisonous mushrooms "
-          "were misidentified\n(likely meaning death for the eater...)"
-          .format(n=n, nc=ncorrect, a=ncorrect/n, nd=ndeaths))
-    
-test_mushrooms(testing)
+        """ Print explanation of each node considered in order to get to
+            a particular decision
+        """
+        print("PATH:")
+        for attr_idx, label_idx in path:
+            attr_dict = self.attr_mapper[attr_idx]
+            label = attr_dict["labels"][label_idx]
+            print("  {}={}".format(attr_dict["name"], label))
 
 
+class Node(object):
+    """ Node in @a DecisionTree, representing the most helpful attribute to
+        consider with the remaining data.
+        Contains labelled @a Branch-es to dig further into @a DecisionTree.
+    """
+    def __init__(self, data, decision_tree, parent_branch=None):
+        ## NB: space-optimization would not have copies of (subsets of) data
+        ## running around. Example - if it were a pandas.DataFrame, this would
+        ## just be a 1-d array of bools saying which rows to consider (filter).
+        self.data = data
+        self.decision_tree = decision_tree
+        self.parent_branch = parent_branch  ## ok to be None, ie root
+        ## NB: set(set) = copy; shallow copy ok since only ints as idxs
+        if self.parent_branch is not None:
+            self.used_idxs = set(self.parent_branch.parent_node.used_idxs)
+        else:
+            self.used_idxs = set(self.decision_tree.used_idxs)
+
+        self.attr, self.entropy = self.decision_tree.find_min_entropy(
+            self.data, self.used_idxs)
+        self.used_idxs.add(self.attr)
+
+        self.branches = {}
+        ## grab each possible outcome for the given attr
+        for label, subiter in self.decision_tree.get_groupby(self.data,
+                self.attr):
+            subdata = list(subiter)  ## unroll generator
+            self.branches[label] = Branch(label, subdata, self)
+
+class Branch(object):
+    """ Create an offshoot from a Node, representing a specific label for
+        whatever attr the @a Node dealt with. E.g. if @a Node.attr was related
+        to "color", @a Branch.label might be "green" or "blue" or "red".
+    """
+    def __init__(self, label, data, parent_node):
+        self.label = label
+        self.data = data
+        self.parent_node = parent_node
+        self.decision_tree = self.parent_node.decision_tree
+        self.child = None
+        self.nitems = len(data)
+        if self.nitems == 0:
+            self.decision, self.certainty = "unknown", 0.0
+            return
+
+        self.decision, self.certainty = self.decision_tree.get_certainty(
+            self.data)
+        ## if attrs remain and not 100% certain, keep searching
+        if self.certainty == 1.0:
+            return
+        if len(self.parent_node.used_idxs) != self.decision_tree.nattrs:
+            self.child = Node(self.data, self.decision_tree, self)
 
