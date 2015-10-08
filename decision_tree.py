@@ -98,13 +98,13 @@ class DecisionTree(object):
         """
         nitems = len(data_slice)
         npositives = len(self.get_positives(data_slice))
-        success = npositives / nitems
-        if success >= 0.5:  ## half the time or more, this is "good"
+        probability = npositives / nitems
+        if probability >= 0.5:  ## half the time or more, this is "good"
             decision = self.dependent_success
-            certainty = success
+            certainty = probability
         else:
             decision = self.not_success
-            certainty = 1 - success
+            certainty = 1 - probability
         return decision, certainty
 
     def get_decision(self, row):
@@ -116,7 +116,8 @@ class DecisionTree(object):
         """
         if len(row) != self.nattrs:
             row = row[:]
-            row.insert(self.dependent_idx, "unknown")  ## placeholder?
+            ## placeholder; should be problem-specific what's a better default
+            row.insert(self.dependent_idx, self.not_success)
         node, nitems = self.root, len(self.data)
         decision, certainty = self.decision, self.certainty
         path = []
@@ -137,11 +138,12 @@ class DecisionTree(object):
         """ Print explanation of each node considered in order to get to
             a particular decision
         """
-        print("PATH:")
-        for attr_idx, label_idx in path:
+        output = "PATH:"
+        for attr_idx, label in path:
             attr_dict = self.attr_mapper[attr_idx]
-            label = attr_dict["labels"][label_idx]
-            print("  {}={}".format(attr_dict["name"], label))
+            print(attr_dict)
+            output += "\n  {}={}".format(attr_dict["name"], label)
+        return output
 
 
 class Node(object):
