@@ -2,7 +2,8 @@ language: python
 python:
     - "3.4"
     - "3.5"
+sudo: required
 install:
-    - pip install --user -r requirements.txt
+    - pip install -r requirements.txt
 script:
     - nosetests --with-coverage --cover-package ai
