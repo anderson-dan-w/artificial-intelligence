@@ -3,7 +3,7 @@ import sys
 import unittest
 
 try:
-    import decision_tree
+    from ai import decision_tree
 except:
     raise Exception("syspath:\n\t{}".format("\n\t".join(sys.path)))
 

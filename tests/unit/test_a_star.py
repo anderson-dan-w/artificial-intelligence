@@ -3,7 +3,7 @@ from __future__ import print_function, absolute_import
 import unittest
 
 try:
-    import a_star
+    from ai import a_star
 except:
     import sys
     raise Exception("Syspath=\n\t{}".format("\n\t".join(sys.path)))
