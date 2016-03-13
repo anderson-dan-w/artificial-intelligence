@@ -2,7 +2,10 @@ from __future__ import print_function
 import sys
 import unittest
 
-from ai import decision_tree
+try:
+    import decision_tree
+except:
+    raise Exception("syspath:\n\t{}".format("\n\t".join(sys.path)))
 
 if sys.version_info.major == 2:
     from StringIO import StringIO

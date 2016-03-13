@@ -1,8 +1,12 @@
 """ unit testing for a_star search (and Node and Graph basics) """
-
+from __future__ import print_function, absolute_import
 import unittest
 
-from ai import a_star
+try:
+    import a_star
+except:
+    import sys
+    raise Exception("Syspath=\n\t{}".format("\n\t".join(sys.path)))
 
 class TestNode(unittest.TestCase):
     """ test various @a Node aspects """
