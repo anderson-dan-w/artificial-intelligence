@@ -1,4 +1,4 @@
-![icon](anderson-dan-w.github.com/lightning-xcf.jpg)
+![icon](http://anderson-dan-w.github.io/lightning-xcf.jpg)
 #artificial-intelligence [![Build Status](https://travis-ci.org/anderson-dan-w/artificial-intelligence.svg?branch=master)](https://travis-ci.org/anderson-dan-w/artificial-intelligence)
 ===
 After taking some AI/ML courses, I wanted to save my work so that I might be able to reference and remember how to implement the algorithms, and where there might be knobs to tweak.
