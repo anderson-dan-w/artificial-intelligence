@@ -1,7 +1,5 @@
 #!/usr/bin/python3
-from pprint import pprint
-import sys
-import random
+from __future__ import print_function
 from collections import defaultdict, Counter
 
 import tfidf_setup as TFIDF
