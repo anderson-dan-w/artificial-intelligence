@@ -2,15 +2,7 @@
 import random
 import math
 
-def convert_csv_to_data(fname):
-    fh = open(fname)
-    data = fh.read().replace("\r","\n").replace("\n\n", "\n").split("\n")
-    fh.close()
-    data_list = [[float(v) for v in d.replace("\n","").split(",")] for d in data]
-    return data_list
-
-#fname =  "pr7_auto_mpg_small.csv"
-#data_list = convert_csv_to_data(fname)
+from ai improt ai_utility
 
 class NeuralNetwork(object):
     def __init__(self, data_list, hidden_nodes=None, output_nodes=1, alpha=0.1):
@@ -249,7 +241,7 @@ if False:
     n.update_weights()
 
     fname =  "pr7_auto_mpg_small.csv"
-    data_list = convert_csv_to_data(fname)
+    data_list = ai_utility.convert_csv_to_data(fname)
     n = NeuralNetwork(data_list)
     n.online_training()
     print("output_weights={n.output_weights}".format(n=n))

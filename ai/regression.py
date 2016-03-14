@@ -1,6 +1,9 @@
-##pr7
 import random
 import math
+
+##pr7
+from ai import ai_utility
+
 def calc_linear_yhats(thetas, x_vectors):
     nthetas = len(thetas)
     return [sum(thetas[i] * vec[i] for i in range(nthetas))
@@ -73,15 +76,8 @@ class Regression(object):
 def make_pretty_theta_string(thetas):
     return "[" + ", ".join("{:.03}".format(t) for t in thetas) + "]"
 
-def convert_csv_to_data(fname):
-    fh = open(fname)
-    data = fh.read().replace("\r","\n").replace("\n\n", "\n").split("\n")
-    fh.close()
-    data_list = [[float(v) for v in d.replace("\n","").split(",")] for d in data]
-    return data_list
-
 linear = "pr7_concrete_compressive_strength_small.csv"
-lin_data = convert_csv_to_data(linear)
+lin_data = ai_utility.convert_csv_to_data(linear)
 lr = Regression(lin_data, isLinear=True)
 for i in range(10):
     lr.thetas = [random.random()*2 - 1 for j in range(lr.nthetas)]
