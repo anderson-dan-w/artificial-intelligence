@@ -1,24 +1,16 @@
-##pr11
-from __future__ import print_function
-from __future__ import division
+from __future__ import print_function, division
 import math
 import random
 
-def convert_csv_to_data(fname):
-    fh = open(fname)
-    data = fh.read().replace("\r","\n").replace("\n\n", "\n").split("\n")
-    fh.close()
-    data_list = [[float(v) for v in d.replace("\n","").split(",")] for d in data if d]
-    return data_list
+from ai import ai_utility
+#fname = "pr11_concrete.csv"
 
-fname = "pr11_concrete.csv"
-data = convert_csv_to_data(fname)
-print(data[0])
-
-normal_data = []
-avgs = [sum(d[i] for d in data)/len(data) for i in range(len(data[0]))]
-normal_data = [[(vec[i] - avgs[i])/avgs[i] for i in range(len(vec))] for vec in data]
-print(normal_data[0])
+def normalize(data):
+    ncolumns = len(data[0])
+    avgs = [sum(row[i] for row in data) / len(data)
+            for i in range(len(ncolumns))]
+    return [[(row[i] - avgs[i]) / avgs[i] for i in range(len(row))]
+             for row in data]
 
 def calc_distance(vec1, vec2):
     return math.sqrt(sum((vec1[i] - vec2[i]) ** 2 for i in range(1, len(vec1))))
@@ -62,5 +54,5 @@ def find_best_knn(all_data, n=10, maxk=8):
     print("Least error found when k={e[1]}, with avg error {e[0]}".format(e=least_error))
     return k_error_tuples
 
-k = find_best_knn(normal_data, 10, 4)
+#k = find_best_knn(normal_data, 10, 4)
 
