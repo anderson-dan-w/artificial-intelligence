@@ -6,7 +6,7 @@ sudo: required
 install:
     - pip install -r requirements.txt
 script:
-    - nosetests --with-coverage --cover-package ai
+    - nosetests --with-coverage --cover-package ai --cover-min-percentage=90
 
 notifications:
     email:
